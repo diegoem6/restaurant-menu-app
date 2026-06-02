@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const Category = require('../models/Category');
+const Subcategory = require('../models/Subcategory');
 const { auth } = require('../middleware/auth');
 
 const canAccess = (user, cat) =>
@@ -12,7 +13,21 @@ router.get('/', auth, async (req, res) => {
     const cats = await Category.find(filter)
       .populate('dishes.dish')
       .sort({ createdAt: -1 });
-    res.json(cats);
+
+    const catIds = cats.map((c) => c._id);
+    const subcategories = await Subcategory.find({ category: { $in: catIds } })
+      .populate('dishes.dish')
+      .sort({ order: 1 });
+
+    const result = cats.map((cat) => {
+      const obj = cat.toObject();
+      obj.subcategories = subcategories.filter(
+        (s) => s.category.toString() === cat._id.toString()
+      );
+      return obj;
+    });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -25,7 +40,14 @@ router.get('/:id', auth, async (req, res) => {
     if (!cat) return res.status(404).json({ message: 'Category not found' });
     if (!canAccess(req.user, cat))
       return res.status(403).json({ message: 'Forbidden' });
-    res.json(cat);
+
+    const subcategories = await Subcategory.find({ category: cat._id })
+      .populate('dishes.dish')
+      .sort({ order: 1 });
+
+    const result = cat.toObject();
+    result.subcategories = subcategories;
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

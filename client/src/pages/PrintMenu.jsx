@@ -11,6 +11,88 @@ const PRESETS = {
   slate: { bg: '#1e293b', text: '#f8fafc', accent: '#93c5fd' },
 };
 
+function DishList({ dishes, font, hasBgImage, textColor, accentColor }) {
+  return (
+    <div className="space-y-0">
+      {dishes.map(({ dish }, dishIdx) => {
+        if (!dish || typeof dish !== 'object') return null;
+        const isLast = dishIdx === dishes.length - 1;
+        const prices = dish.prices || [];
+        const multiPrice = prices.length > 1;
+        return (
+          <div
+            key={dish._id}
+            className={`py-4 ${!isLast ? 'border-b' : ''}`}
+            style={{ borderBottomColor: hasBgImage ? 'rgba(255,255,255,0.15)' : `${textColor}22` }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-xl font-semibold"
+                  style={{ fontFamily: font, color: hasBgImage ? '#fff' : textColor }}
+                >
+                  {dish.menuName || dish.name}
+                </p>
+                {dish.description && (
+                  <p className="text-sm mt-1 opacity-60 leading-relaxed"
+                    style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                    {dish.description}
+                  </p>
+                )}
+              </div>
+              <div className="text-right flex-shrink-0 ml-4">
+                {multiPrice ? (
+                  <div className="flex items-start gap-4">
+                    {prices.map((p, i) => (
+                      <div key={i} className="text-right">
+                        {p.label && (
+                          <p className="text-xs opacity-60 mb-0.5"
+                            style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                            {p.label}
+                          </p>
+                        )}
+                        <p className="font-bold"
+                          style={{ color: hasBgImage ? '#fcd34d' : accentColor }}>
+                          ${p.priceUYU.toLocaleString('es-UY')}
+                        </p>
+                        {p.priceUSD != null && (
+                          <p className="text-xs opacity-50"
+                            style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                            U$S {p.priceUSD.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : prices.length === 1 ? (
+                  <>
+                    <p className="text-lg font-bold"
+                      style={{ color: hasBgImage ? '#fcd34d' : accentColor }}>
+                      {prices[0].label && (
+                        <span className="text-sm font-normal opacity-60 mr-1"
+                          style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                          {prices[0].label}
+                        </span>
+                      )}
+                      ${prices[0].priceUYU.toLocaleString('es-UY')}
+                    </p>
+                    {prices[0].priceUSD != null && (
+                      <p className="text-xs opacity-50 mt-0.5"
+                        style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                        U$S {prices[0].priceUSD.toFixed(2)}
+                      </p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function PrintMenu() {
   const { id } = useParams();
   const [menu, setMenu] = useState(null);
@@ -103,9 +185,10 @@ export default function PrintMenu() {
       </div>
 
       {/* Categories — each on a new page */}
-      {sortedCategories.map(({ category }, catIdx) => {
+      {sortedCategories.map(({ category }) => {
         if (!category) return null;
         const sortedDishes = [...(category.dishes || [])].sort((a, b) => a.order - b.order);
+        const sortedSubs = [...(category.subcategories || [])].sort((a, b) => a.order - b.order);
 
         return (
           <div
@@ -117,8 +200,8 @@ export default function PrintMenu() {
               <div className="fixed inset-0 bg-black/20 print:hidden" style={{ zIndex: -1 }} />
             )}
 
-            {/* Category header */}
             <div className="max-w-3xl mx-auto">
+              {/* Category header */}
               <div className="text-center mb-10">
                 {logo && (
                   <img src={logo} alt="logo"
@@ -142,57 +225,43 @@ export default function PrintMenu() {
                 )}
               </div>
 
-              {/* Dishes */}
-              <div className="space-y-0">
-                {sortedDishes.map(({ dish }, dishIdx) => {
-                  if (!dish || typeof dish !== 'object') return null;
-                  const isLast = dishIdx === sortedDishes.length - 1;
-                  return (
-                    <div
-                      key={dish._id}
-                      className={`py-4 ${!isLast ? 'border-b' : ''}`}
-                      style={{
-                        borderBottomColor: hasBgImage
-                          ? 'rgba(255,255,255,0.15)'
-                          : `${textColor}22`,
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3
-                            className="text-xl font-semibold"
-                            style={{ fontFamily: font, color: hasBgImage ? '#fff' : textColor }}
-                          >
-                            {dish.name}
-                          </h3>
-                          {dish.description && (
-                            <p
-                              className="text-sm mt-1 opacity-60 leading-relaxed"
-                              style={{ color: hasBgImage ? '#e5e5e5' : textColor }}
-                            >
-                              {dish.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right flex-shrink-0 ml-4">
-                          <p
-                            className="text-lg font-bold"
-                            style={{ color: hasBgImage ? '#fcd34d' : accentColor }}
-                          >
-                            ${dish.priceUYU.toLocaleString('es-UY')}
-                          </p>
-                          {dish.priceUSD != null && (
-                            <p className="text-xs opacity-50 mt-0.5"
-                              style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
-                              U$S {dish.priceUSD.toFixed(2)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+              {/* Direct dishes */}
+              {sortedDishes.length > 0 && (
+                <DishList dishes={sortedDishes} font={font} hasBgImage={hasBgImage} textColor={textColor} accentColor={accentColor} />
+              )}
+
+              {/* Subcategories */}
+              {sortedSubs.map((sub) => {
+                const subDishes = [...(sub.dishes || [])].sort((a, b) => a.order - b.order);
+                return (
+                  <div key={sub._id} className="mt-8">
+                    {/* Subcategory header */}
+                    <div className="mb-4">
+                      <h3
+                        className="text-2xl font-semibold"
+                        style={{ fontFamily: font, color: hasBgImage ? '#fff' : textColor }}
+                      >
+                        {sub.name}
+                      </h3>
+                      <div
+                        className="w-10 h-px mt-1 mb-2"
+                        style={{ backgroundColor: hasBgImage ? 'rgba(255,255,255,0.3)' : accentColor }}
+                      />
+                      {sub.description && (
+                        <p className="text-sm opacity-55 italic"
+                          style={{ color: hasBgImage ? '#e5e5e5' : textColor }}>
+                          {sub.description}
+                        </p>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Subcategory dishes */}
+                    {subDishes.length > 0 && (
+                      <DishList dishes={subDishes} font={font} hasBgImage={hasBgImage} textColor={textColor} accentColor={accentColor} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

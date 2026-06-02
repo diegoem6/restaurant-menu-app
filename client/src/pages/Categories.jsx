@@ -43,15 +43,55 @@ function CategoryForm({ initial, onSave, onCancel }) {
   );
 }
 
-function ManageDishesModal({ category, allDishes, onClose, onSave }) {
+function SubcategoryForm({ initial, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    name: initial?.name || '',
+    description: initial?.description || '',
+    order: initial?.order ?? 0,
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try { await onSave({ ...form, order: Number(form.order) }); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="label">Nombre *</label>
+        <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      </div>
+      <div>
+        <label className="label">Descripción</label>
+        <textarea className="input resize-none" rows={2} value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })} />
+      </div>
+      <div>
+        <label className="label">Orden</label>
+        <input type="number" min="0" className="input w-24" value={form.order}
+          onChange={(e) => setForm({ ...form, order: e.target.value })} />
+      </div>
+      <div className="flex gap-3 justify-end pt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary">Cancelar</button>
+        <button type="submit" disabled={loading} className="btn-primary">
+          {loading ? 'Guardando...' : 'Guardar subcategoría'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ManageDishesModal({ currentDishes, allDishes, onClose, onSave }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(TouchSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Build current ordered dishes list
-  const sorted = [...(category.dishes || [])].sort((a, b) => a.order - b.order);
+  const sorted = [...(currentDishes || [])].sort((a, b) => a.order - b.order);
   const [selected, setSelected] = useState(sorted.map((d) => d.dish._id || d.dish));
   const [saving, setSaving] = useState(false);
 
@@ -83,15 +123,12 @@ function ManageDishesModal({ category, allDishes, onClose, onSave }) {
     }
   };
 
-  const inCategory = selected.length > 0;
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-stone-500 font-body">
-        Seleccioná los platos que pertenecen a esta categoría y arrastrá para cambiar el orden.
+        Seleccioná los platos y arrastrá para cambiar el orden.
       </p>
 
-      {/* All dishes - toggle */}
       <div>
         <p className="label mb-2">Todos los platos disponibles</p>
         <div className="space-y-1 max-h-40 overflow-y-auto border border-stone-200 rounded-lg p-2">
@@ -108,16 +145,15 @@ function ManageDishesModal({ category, allDishes, onClose, onSave }) {
                 className="accent-amber-600"
               />
               <span className="text-sm text-stone-700">{dish.name}</span>
-              <span className="ml-auto text-xs text-stone-400">${dish.priceUYU}</span>
+              <span className="ml-auto text-xs text-stone-400">${dish.prices?.[0]?.priceUYU ?? ''}</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* Ordered list */}
-      {inCategory && (
+      {selected.length > 0 && (
         <div>
-          <p className="label mb-2">Orden en la categoría (arrastrá para reordenar)</p>
+          <p className="label mb-2">Orden (arrastrá para reordenar)</p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={selected} strategy={verticalListSortingStrategy}>
               <div className="space-y-1 border border-stone-200 rounded-lg p-2">
@@ -153,13 +189,16 @@ export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [allDishes, setAllDishes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
-  const [manageDishes, setManageDishes] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [modal, setModal] = useState(null);           // null | 'create' | category object
+  const [manageDishes, setManageDishes] = useState(null);   // null | category object
+  const [deleteTarget, setDeleteTarget] = useState(null);   // null | category object
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  // Subcategory state
+  const [subModal, setSubModal] = useState(null);         // null | { mode:'create', categoryId } | { mode:'edit', sub, categoryId }
+  const [manageSubDishes, setManageSubDishes] = useState(null); // null | sub object
+  const [deleteSubTarget, setDeleteSubTarget] = useState(null);  // null | sub object
+
+  useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     try {
@@ -173,10 +212,11 @@ export default function Categories() {
     }
   };
 
+  // Category handlers
   const handleCreate = async (data) => {
     try {
       const res = await api.post('/categories', data);
-      setCategories([res.data, ...categories]);
+      setCategories([{ ...res.data, subcategories: [] }, ...categories]);
       setModal(null);
       toast.success('Categoría creada');
     } catch (err) {
@@ -187,7 +227,9 @@ export default function Categories() {
   const handleEdit = async (data) => {
     try {
       const res = await api.put(`/categories/${modal._id}`, data);
-      setCategories(categories.map((c) => (c._id === modal._id ? res.data : c)));
+      setCategories(categories.map((c) =>
+        c._id === modal._id ? { ...res.data, subcategories: c.subcategories } : c
+      ));
       setModal(null);
       toast.success('Categoría actualizada');
     } catch (err) {
@@ -198,7 +240,9 @@ export default function Categories() {
   const handleSaveDishes = async (dishes) => {
     try {
       const res = await api.put(`/categories/${manageDishes._id}/dishes`, { dishes });
-      setCategories(categories.map((c) => (c._id === manageDishes._id ? res.data : c)));
+      setCategories(categories.map((c) =>
+        c._id === manageDishes._id ? { ...res.data, subcategories: c.subcategories } : c
+      ));
       toast.success('Platos actualizados');
     } catch {
       toast.error('Error al guardar');
@@ -210,6 +254,63 @@ export default function Categories() {
       await api.delete(`/categories/${deleteTarget._id}`);
       setCategories(categories.filter((c) => c._id !== deleteTarget._id));
       toast.success('Categoría eliminada');
+    } catch {
+      toast.error('Error al eliminar');
+    }
+  };
+
+  // Subcategory handlers
+  const handleCreateSub = async (data) => {
+    try {
+      const res = await api.post('/subcategories', { ...data, categoryId: subModal.categoryId });
+      setCategories(categories.map((c) =>
+        c._id === subModal.categoryId
+          ? { ...c, subcategories: [...(c.subcategories || []), res.data] }
+          : c
+      ));
+      setSubModal(null);
+      toast.success('Subcategoría creada');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error');
+    }
+  };
+
+  const handleEditSub = async (data) => {
+    try {
+      const res = await api.put(`/subcategories/${subModal.sub._id}`, data);
+      setCategories(categories.map((c) =>
+        c._id === subModal.categoryId
+          ? { ...c, subcategories: (c.subcategories || []).map((s) => s._id === subModal.sub._id ? res.data : s) }
+          : c
+      ));
+      setSubModal(null);
+      toast.success('Subcategoría actualizada');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error');
+    }
+  };
+
+  const handleSaveSubDishes = async (dishes) => {
+    try {
+      const res = await api.put(`/subcategories/${manageSubDishes._id}/dishes`, { dishes });
+      setCategories(categories.map((c) => ({
+        ...c,
+        subcategories: (c.subcategories || []).map((s) => s._id === manageSubDishes._id ? res.data : s),
+      })));
+      toast.success('Platos actualizados');
+    } catch {
+      toast.error('Error al guardar');
+    }
+  };
+
+  const handleDeleteSub = async () => {
+    try {
+      await api.delete(`/subcategories/${deleteSubTarget._id}`);
+      setCategories(categories.map((c) => ({
+        ...c,
+        subcategories: (c.subcategories || []).filter((s) => s._id !== deleteSubTarget._id),
+      })));
+      toast.success('Subcategoría eliminada');
     } catch {
       toast.error('Error al eliminar');
     }
@@ -238,8 +339,10 @@ export default function Categories() {
         <div className="space-y-3">
           {categories.map((cat) => {
             const sortedDishes = [...(cat.dishes || [])].sort((a, b) => a.order - b.order);
+            const sortedSubs = [...(cat.subcategories || [])].sort((a, b) => a.order - b.order);
             return (
               <div key={cat._id} className="card p-4">
+                {/* Category header */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium text-stone-800">{cat.name}</p>
@@ -251,14 +354,23 @@ export default function Categories() {
                     <button
                       onClick={() => setManageDishes(cat)}
                       className="btn-ghost text-xs"
-                      title="Gestionar platos"
+                      title="Gestionar platos directos"
                     >
                       🍽️ Platos ({sortedDishes.length})
+                    </button>
+                    <button
+                      onClick={() => setSubModal({ mode: 'create', categoryId: cat._id })}
+                      className="btn-ghost text-xs"
+                      title="Nueva subcategoría"
+                    >
+                      + Subcategoría
                     </button>
                     <button onClick={() => setModal(cat)} className="btn-ghost p-2">✏️</button>
                     <button onClick={() => setDeleteTarget(cat)} className="btn-ghost p-2 hover:text-red-500">🗑️</button>
                   </div>
                 </div>
+
+                {/* Direct dishes */}
                 {sortedDishes.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {sortedDishes.map(({ dish }, i) => {
@@ -274,13 +386,69 @@ export default function Categories() {
                     })}
                   </div>
                 )}
+
+                {/* Subcategories */}
+                {sortedSubs.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">Subcategorías</p>
+                    {sortedSubs.map((sub) => {
+                      const subSortedDishes = [...(sub.dishes || [])].sort((a, b) => a.order - b.order);
+                      return (
+                        <div key={sub._id} className="border border-stone-200 rounded-lg p-3 bg-stone-50">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-stone-700">
+                                <span className="text-stone-400 mr-1 text-xs">#{sub.order}</span>
+                                {sub.name}
+                              </p>
+                              {sub.description && (
+                                <p className="text-xs text-stone-500 font-body mt-0.5">{sub.description}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => setManageSubDishes(sub)}
+                                className="btn-ghost text-xs py-0.5"
+                              >
+                                🍽️ {subSortedDishes.length}
+                              </button>
+                              <button
+                                onClick={() => setSubModal({ mode: 'edit', sub, categoryId: cat._id })}
+                                className="btn-ghost p-1 text-sm"
+                              >✏️</button>
+                              <button
+                                onClick={() => setDeleteSubTarget(sub)}
+                                className="btn-ghost p-1 text-sm hover:text-red-500"
+                              >🗑️</button>
+                            </div>
+                          </div>
+                          {subSortedDishes.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {subSortedDishes.map(({ dish }, i) => {
+                                const d = typeof dish === 'object' ? dish : allDishes.find((x) => x._id === dish);
+                                if (!d) return null;
+                                return (
+                                  <span key={d._id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-white text-stone-600 rounded-full text-xs font-body border border-stone-200">
+                                    <span className="text-stone-400">{i + 1}.</span>
+                                    {d.name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit Category Modal */}
       <Modal
         isOpen={!!modal}
         onClose={() => setModal(null)}
@@ -295,7 +463,7 @@ export default function Categories() {
         )}
       </Modal>
 
-      {/* Manage Dishes Modal */}
+      {/* Manage Category Dishes Modal */}
       <Modal
         isOpen={!!manageDishes}
         onClose={() => setManageDishes(null)}
@@ -304,7 +472,7 @@ export default function Categories() {
       >
         {manageDishes && (
           <ManageDishesModal
-            category={manageDishes}
+            currentDishes={manageDishes.dishes}
             allDishes={allDishes}
             onClose={() => setManageDishes(null)}
             onSave={handleSaveDishes}
@@ -312,13 +480,54 @@ export default function Categories() {
         )}
       </Modal>
 
-      {/* Delete confirm */}
+      {/* Create/Edit Subcategory Modal */}
+      <Modal
+        isOpen={!!subModal}
+        onClose={() => setSubModal(null)}
+        title={subModal?.mode === 'create' ? 'Nueva subcategoría' : 'Editar subcategoría'}
+      >
+        {subModal && (
+          <SubcategoryForm
+            initial={subModal.mode === 'edit' ? subModal.sub : null}
+            onSave={subModal.mode === 'create' ? handleCreateSub : handleEditSub}
+            onCancel={() => setSubModal(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Manage Subcategory Dishes Modal */}
+      <Modal
+        isOpen={!!manageSubDishes}
+        onClose={() => setManageSubDishes(null)}
+        title={`Platos de "${manageSubDishes?.name}"`}
+        size="lg"
+      >
+        {manageSubDishes && (
+          <ManageDishesModal
+            currentDishes={manageSubDishes.dishes}
+            allDishes={allDishes}
+            onClose={() => setManageSubDishes(null)}
+            onSave={handleSaveSubDishes}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Category confirm */}
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Eliminar categoría"
-        message={`¿Eliminar "${deleteTarget?.name}"? Los platos no serán eliminados.`}
+        message={`¿Eliminar "${deleteTarget?.name}"? Los platos y subcategorías no serán eliminados.`}
+      />
+
+      {/* Delete Subcategory confirm */}
+      <ConfirmDialog
+        isOpen={!!deleteSubTarget}
+        onClose={() => setDeleteSubTarget(null)}
+        onConfirm={handleDeleteSub}
+        title="Eliminar subcategoría"
+        message={`¿Eliminar "${deleteSubTarget?.name}"? Los platos no serán eliminados.`}
       />
     </div>
   );

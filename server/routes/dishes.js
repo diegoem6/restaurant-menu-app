@@ -32,10 +32,9 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/dishes
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, description, priceUYU, priceUSD } = req.body;
+    const { name, menuName, description, prices } = req.body;
     const dish = await Dish.create({
-      name, description, priceUYU,
-      priceUSD: priceUSD ?? null,
+      name, menuName, description, prices: prices || [],
       owner: req.user._id,
     });
     res.status(201).json(dish);
@@ -52,11 +51,11 @@ router.put('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, dish))
       return res.status(403).json({ message: 'Forbidden' });
 
-    const { name, description, priceUYU, priceUSD } = req.body;
-    dish.name = name ?? dish.name;
-    dish.description = description ?? dish.description;
-    dish.priceUYU = priceUYU ?? dish.priceUYU;
-    dish.priceUSD = priceUSD !== undefined ? priceUSD : dish.priceUSD;
+    const { name, menuName, description, prices } = req.body;
+    if (name !== undefined) dish.name = name;
+    if (menuName !== undefined) dish.menuName = menuName;
+    if (description !== undefined) dish.description = description;
+    if (prices !== undefined) dish.prices = prices;
     await dish.save();
     res.json(dish);
   } catch (err) {

@@ -4,29 +4,57 @@ import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-const EMPTY_FORM = { name: '', description: '', priceUYU: '', priceUSD: '' };
+const EMPTY_PRICE = { label: '', priceUYU: '', priceUSD: '', autoUSD: true };
 
 function DishForm({ initial, onSave, onCancel, exchangeRate }) {
-  const [form, setForm] = useState(initial || EMPTY_FORM);
-  const [autoUSD, setAutoUSD] = useState(!initial?.priceUSD);
+  const [form, setForm] = useState({
+    name: initial?.name || '',
+    menuName: initial?.menuName || '',
+    description: initial?.description || '',
+  });
+  const [prices, setPrices] = useState(
+    initial?.prices?.length
+      ? initial.prices.map((p) => ({
+          label: p.label || '',
+          priceUYU: String(p.priceUYU),
+          priceUSD: p.priceUSD != null ? String(p.priceUSD) : '',
+          autoUSD: false,
+        }))
+      : [{ ...EMPTY_PRICE }]
+  );
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (autoUSD && form.priceUYU) {
-      const usd = (parseFloat(form.priceUYU) / exchangeRate).toFixed(2);
-      setForm((f) => ({ ...f, priceUSD: usd }));
-    }
-  }, [form.priceUYU, autoUSD, exchangeRate]);
+  const updatePrice = (idx, field, value) => {
+    setPrices((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      // Recalculate USD when priceUYU changes or autoUSD is toggled on
+      if (
+        (field === 'priceUYU' && updated[idx].autoUSD) ||
+        (field === 'autoUSD' && value)
+      ) {
+        const uyu = field === 'priceUYU' ? parseFloat(value) : parseFloat(updated[idx].priceUYU);
+        const usd = exchangeRate ? (uyu / exchangeRate).toFixed(2) : '';
+        updated[idx].priceUSD = isNaN(usd) ? '' : usd;
+      }
+      return updated;
+    });
+  };
+
+  const addPrice = () => setPrices((prev) => [...prev, { ...EMPTY_PRICE }]);
+  const removePrice = (idx) => setPrices((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await onSave({
-        name: form.name,
-        description: form.description,
-        priceUYU: parseFloat(form.priceUYU),
-        priceUSD: form.priceUSD ? parseFloat(form.priceUSD) : null,
+        ...form,
+        prices: prices.map(({ label, priceUYU, priceUSD }) => ({
+          label,
+          priceUYU: parseFloat(priceUYU),
+          priceUSD: priceUSD !== '' ? parseFloat(priceUSD) : null,
+        })),
       });
     } finally {
       setLoading(false);
@@ -36,51 +64,87 @@ function DishForm({ initial, onSave, onCancel, exchangeRate }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="label">Nombre *</label>
-        <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        <label className="label">Nombre interno *</label>
+        <input className="input" value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      </div>
+      <div>
+        <label className="label">
+          Nombre en carta
+          <span className="ml-1 text-stone-400 font-normal text-xs">(si está vacío se usa el nombre interno)</span>
+        </label>
+        <input className="input" value={form.menuName}
+          onChange={(e) => setForm({ ...form, menuName: e.target.value })}
+          placeholder={form.name} />
       </div>
       <div>
         <label className="label">Descripción</label>
         <textarea className="input resize-none" rows={2} value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label">Precio UYU *</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
-            <input
-              type="number" min="0" step="0.01" className="input pl-7"
-              value={form.priceUYU}
-              onChange={(e) => setForm({ ...form, priceUYU: e.target.value })}
-              required
-            />
-          </div>
+
+      {/* Prices */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="label mb-0">Precios *</label>
+          <button type="button" onClick={addPrice} className="btn-ghost text-xs py-0.5">
+            + Agregar precio
+          </button>
         </div>
-        <div>
-          <label className="label">
-            Precio USD
-            <button type="button"
-              className="ml-2 text-amber-600 hover:text-amber-700 text-xs normal-case"
-              onClick={() => setAutoUSD(!autoUSD)}
-            >
-              {autoUSD ? '(auto ✓)' : '(manual)'}
-            </button>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">U$S</span>
-            <input
-              type="number" min="0" step="0.01" className="input pl-10"
-              value={form.priceUSD}
-              readOnly={autoUSD}
-              onChange={(e) => !autoUSD && setForm({ ...form, priceUSD: e.target.value })}
-            />
-          </div>
-          {autoUSD && (
-            <p className="text-xs text-stone-400 mt-1">TC: {exchangeRate} UYU/USD</p>
-          )}
+        <div className="space-y-3">
+          {prices.map((p, idx) => (
+            <div key={idx} className="border border-stone-200 rounded-lg p-3 space-y-2 bg-stone-50">
+              <div className="flex items-center gap-2">
+                <input
+                  className="input flex-1 text-sm"
+                  placeholder="Etiqueta (ej. Chico, Grande, Porción...)"
+                  value={p.label}
+                  onChange={(e) => updatePrice(idx, 'label', e.target.value)}
+                />
+                {prices.length > 1 && (
+                  <button type="button" onClick={() => removePrice(idx)}
+                    className="btn-ghost p-1 text-stone-400 hover:text-red-500 text-sm flex-shrink-0">
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-stone-500 mb-1 block">Precio UYU *</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">$</span>
+                    <input type="number" min="0" step="0.01" className="input pl-6 text-sm"
+                      value={p.priceUYU}
+                      onChange={(e) => updatePrice(idx, 'priceUYU', e.target.value)}
+                      required />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-stone-500 mb-1 flex items-center gap-1">
+                    Precio USD
+                    <button type="button"
+                      className="text-amber-600 hover:text-amber-700 text-xs"
+                      onClick={() => updatePrice(idx, 'autoUSD', !p.autoUSD)}>
+                      {p.autoUSD ? '(auto ✓)' : '(manual)'}
+                    </button>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">U$S</span>
+                    <input type="number" min="0" step="0.01" className="input pl-9 text-sm"
+                      value={p.priceUSD}
+                      readOnly={p.autoUSD}
+                      onChange={(e) => !p.autoUSD && updatePrice(idx, 'priceUSD', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
+        {prices.some((p) => p.autoUSD) && (
+          <p className="text-xs text-stone-400 mt-1">TC: {exchangeRate} UYU/USD</p>
+        )}
       </div>
+
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onCancel} className="btn-secondary">Cancelar</button>
         <button type="submit" disabled={loading} className="btn-primary">
@@ -183,38 +247,43 @@ export default function Dishes() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((dish) => (
-            <div key={dish._id} className="card p-4 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-medium text-stone-800">{dish.name}</p>
-                {dish.description && (
-                  <p className="text-sm text-stone-500 truncate font-body mt-0.5">{dish.description}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <div className="text-right">
-                  <p className="font-medium text-stone-800 text-sm">
-                    ${dish.priceUYU.toLocaleString('es-UY')}
-                  </p>
-                  {dish.priceUSD != null && (
-                    <p className="text-xs text-stone-400">U$S {dish.priceUSD.toFixed(2)}</p>
+          {filtered.map((dish) => {
+            const prices = dish.prices || [];
+            return (
+              <div key={dish._id} className="card p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-stone-800">{dish.name}</p>
+                  {dish.menuName && dish.menuName !== dish.name && (
+                    <p className="text-xs text-amber-700 font-body mt-0.5">Carta: {dish.menuName}</p>
+                  )}
+                  {dish.description && (
+                    <p className="text-sm text-stone-500 truncate font-body mt-0.5">{dish.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setModal(dish)}
-                    className="btn-ghost p-2 text-base"
-                    title="Editar"
-                  >✏️</button>
-                  <button
-                    onClick={() => setDeleteTarget(dish)}
-                    className="btn-ghost p-2 text-base hover:text-red-500"
-                    title="Eliminar"
-                  >🗑️</button>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="text-right space-y-0.5">
+                    {prices.map((p, i) => (
+                      <div key={i} className="flex items-baseline gap-1.5 justify-end">
+                        {p.label && (
+                          <span className="text-xs text-stone-400">{p.label}:</span>
+                        )}
+                        <span className="font-medium text-stone-800 text-sm">
+                          ${p.priceUYU.toLocaleString('es-UY')}
+                        </span>
+                        {p.priceUSD != null && (
+                          <span className="text-xs text-stone-400">/ U$S {p.priceUSD.toFixed(2)}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setModal(dish)} className="btn-ghost p-2 text-base" title="Editar">✏️</button>
+                    <button onClick={() => setDeleteTarget(dish)} className="btn-ghost p-2 text-base hover:text-red-500" title="Eliminar">🗑️</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
