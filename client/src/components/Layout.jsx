@@ -39,6 +39,7 @@ export default function Layout() {
     { to: '/menus', icon: '📋', label: 'Cartas' },
     { to: '/categories', icon: '🗂️', label: 'Categorías' },
     { to: '/dishes', icon: '🍽️', label: 'Platos' },
+    { to: '/import', icon: '📥', label: 'Importar platos' },
     ...(user?.role === 'admin' ? [{ to: '/users', icon: '👥', label: 'Usuarios' }] : []),
   ];
 

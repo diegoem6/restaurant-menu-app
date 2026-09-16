@@ -36,6 +36,11 @@ function MenuForm({ initial, onSave, onCancel }) {
     bgPreset: initial?.backgroundTemplate?.preset || 'cream',
     bgCustom: initial?.backgroundTemplate?.customImage || null,
     logo: initial?.logo || null,
+    titleFontColor: initial?.titleFontColor || null,
+    categoryFontColor: initial?.categoryFontColor || null,
+    dishFontColor: initial?.dishFontColor || null,
+    categoryFontSize: initial?.categoryFontSize || 'medium',
+    dishFontSize: initial?.dishFontSize || 'medium',
   });
   const [loading, setLoading] = useState(false);
 
@@ -52,6 +57,11 @@ function MenuForm({ initial, onSave, onCancel }) {
           customImage: form.bgType === 'custom' ? form.bgCustom : null,
         },
         logo: form.logo,
+        titleFontColor: form.titleFontColor,
+        categoryFontColor: form.categoryFontColor,
+        dishFontColor: form.dishFontColor,
+        categoryFontSize: form.categoryFontSize,
+        dishFontSize: form.dishFontSize,
       });
     } finally {
       setLoading(false);
@@ -77,6 +87,112 @@ function MenuForm({ initial, onSave, onCancel }) {
         <p className="text-sm mt-1.5 text-stone-500 font-body" style={{ fontFamily: form.font }}>
           Vista previa: Menú del Restaurante
         </p>
+      </div>
+
+      <div>
+        <label className="label">Color de fuente — Nombre de la carta</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={form.titleFontColor || '#1c1917'}
+            onChange={(e) => setForm({ ...form, titleFontColor: e.target.value })}
+            className="h-9 w-14 rounded cursor-pointer border border-stone-200 p-0.5"
+          />
+          <span className="text-sm text-stone-500 font-mono">
+            {form.titleFontColor || 'Color del tema'}
+          </span>
+          {form.titleFontColor && (
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, titleFontColor: null })}
+              className="text-xs text-stone-400 hover:text-stone-600 underline"
+            >
+              Usar color del tema
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Color de fuente — Categorías</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={form.categoryFontColor || '#1c1917'}
+            onChange={(e) => setForm({ ...form, categoryFontColor: e.target.value })}
+            className="h-9 w-14 rounded cursor-pointer border border-stone-200 p-0.5"
+          />
+          <span className="text-sm text-stone-500 font-mono">
+            {form.categoryFontColor || 'Color del tema'}
+          </span>
+          {form.categoryFontColor && (
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, categoryFontColor: null })}
+              className="text-xs text-stone-400 hover:text-stone-600 underline"
+            >
+              Usar color del tema
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Color de fuente — Platos</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={form.dishFontColor || '#1c1917'}
+            onChange={(e) => setForm({ ...form, dishFontColor: e.target.value })}
+            className="h-9 w-14 rounded cursor-pointer border border-stone-200 p-0.5"
+          />
+          <span className="text-sm text-stone-500 font-mono">
+            {form.dishFontColor || 'Color del tema'}
+          </span>
+          {form.dishFontColor && (
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, dishFontColor: null })}
+              className="text-xs text-stone-400 hover:text-stone-600 underline"
+            >
+              Usar color del tema
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Tamaño de fuente — Categorías</label>
+        <div className="flex gap-2">
+          {[['small', 'Chico'], ['medium', 'Medio'], ['large', 'Grande']].map(([val, label]) => (
+            <button key={val} type="button"
+              onClick={() => setForm({ ...form, categoryFontSize: val })}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                form.categoryFontSize === val
+                  ? 'bg-amber-700 text-white border-amber-700'
+                  : 'border-stone-300 text-stone-600 hover:bg-stone-50'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Tamaño de fuente — Platos</label>
+        <div className="flex gap-2">
+          {[['small', 'Chico'], ['medium', 'Medio'], ['large', 'Grande']].map(([val, label]) => (
+            <button key={val} type="button"
+              onClick={() => setForm({ ...form, dishFontSize: val })}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                form.dishFontSize === val
+                  ? 'bg-amber-700 text-white border-amber-700'
+                  : 'border-stone-300 text-stone-600 hover:bg-stone-50'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

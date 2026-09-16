@@ -15,6 +15,11 @@ const PRESETS = {
   forest: '#1a2e1a', wine: '#3b0a0a', slate: '#1e293b',
 };
 
+// A category's dishes can live directly on it or inside its subcategories
+const totalDishCount = (cat) =>
+  (cat.dishes?.length || 0) +
+  (cat.subcategories || []).reduce((sum, s) => sum + (s.dishes?.length || 0), 0);
+
 export default function MenuEditor() {
   const { id } = useParams();
   const [menu, setMenu] = useState(null);
@@ -139,7 +144,7 @@ export default function MenuEditor() {
             <div className="space-y-2">
               {allCategories.map((cat) => {
                 const isIn = selectedIds.includes(cat._id);
-                const dishCount = cat.dishes?.length || 0;
+                const dishCount = totalDishCount(cat);
                 return (
                   <label key={cat._id}
                     className={`card p-3 flex items-center gap-3 cursor-pointer transition-all ${
@@ -210,11 +215,21 @@ export default function MenuEditor() {
                           {sortedDishes.length > 0 && (
                             <p className="text-xs text-stone-400 mt-1 ml-7 font-body">
                               {sortedDishes
-                                .map(({ dish }) => (typeof dish === 'object' ? dish.name : dish))
+                                .map(({ dish }) => (typeof dish === 'object' ? dish?.name : dish))
                                 .filter(Boolean)
                                 .join(', ')}
                             </p>
                           )}
+                          {(() => {
+                            const subsWithDishes = (cat.subcategories || []).filter((s) => s.dishes?.length);
+                            if (!subsWithDishes.length) return null;
+                            const subDishCount = subsWithDishes.reduce((n, s) => n + s.dishes.length, 0);
+                            return (
+                              <p className="text-xs text-stone-400 mt-1 ml-7 font-body italic">
+                                {subDishCount} plato{subDishCount !== 1 ? 's' : ''} en {subsWithDishes.length} subcategoría{subsWithDishes.length !== 1 ? 's' : ''}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </SortableItem>
                     );

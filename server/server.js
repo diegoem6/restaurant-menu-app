@@ -17,6 +17,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/subcategories', require('./routes/subcategories'));
 app.use('/api/menus', require('./routes/menus'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/import', require('./routes/import'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

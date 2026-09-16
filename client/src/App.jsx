@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Dishes from './pages/Dishes';
+import ImportDishes from './pages/ImportDishes';
 import Categories from './pages/Categories';
 import Menus from './pages/Menus';
 import MenuEditor from './pages/MenuEditor';
@@ -39,6 +40,7 @@ function AppRoutes() {
       }>
         <Route index element={<Dashboard />} />
         <Route path="dishes" element={<Dishes />} />
+        <Route path="import" element={<ImportDishes />} />
         <Route path="categories" element={<Categories />} />
         <Route path="menus" element={<Menus />} />
         <Route path="menus/:id/edit" element={<MenuEditor />} />

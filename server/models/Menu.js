@@ -9,6 +9,11 @@ const menuSchema = new mongoose.Schema({
   },
   logo: { type: String, default: null }, // base64
   font: { type: String, default: 'Playfair Display' },
+  titleFontColor: { type: String, default: null },
+  categoryFontColor: { type: String, default: null },
+  dishFontColor: { type: String, default: null },
+  categoryFontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+  dishFontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
   categories: [{
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     order: { type: Number, default: 0 },

@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const Dish = require('../models/Dish');
+const Category = require('../models/Category');
+const Subcategory = require('../models/Subcategory');
 const { auth } = require('../middleware/auth');
 
 const canAccess = (user, dish) =>
@@ -71,6 +73,10 @@ router.delete('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, dish))
       return res.status(403).json({ message: 'Forbidden' });
     await dish.deleteOne();
+    await Promise.all([
+      Category.updateMany({ 'dishes.dish': dish._id }, { $pull: { dishes: { dish: dish._id } } }),
+      Subcategory.updateMany({ 'dishes.dish': dish._id }, { $pull: { dishes: { dish: dish._id } } }),
+    ]);
     res.json({ message: 'Dish deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
