@@ -356,6 +356,7 @@ export default function PrintMenu() {
   const handleExportPdf = async () => {
     if (exporting || !pagesRef.current) return;
     setExporting(true);
+    let finalPageEls = [];
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
@@ -395,7 +396,7 @@ export default function PrintMenu() {
       setExportLayout(layout);
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      const finalPageEls = Array.from(pagesRef.current.querySelectorAll('.pdf-page'));
+      finalPageEls = Array.from(pagesRef.current.querySelectorAll('.pdf-page'));
       finalPageEls.forEach((el) => {
         el.style.width = `${PDF_PAGE_WIDTH}px`;
         el.style.minHeight = `${PDF_PAGE_MIN_HEIGHT}px`;
@@ -404,27 +405,38 @@ export default function PrintMenu() {
 
       // 4. Capture each page 1:1 — no slicing needed, every page is already
       // at most one A4 sheet tall.
+      console.log(`Exportando PDF: ${finalPageEls.length} páginas`);
       const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
       let isFirstPage = true;
-      for (const el of finalPageEls) {
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        if (!isFirstPage) pdf.addPage('a4', 'portrait');
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-        isFirstPage = false;
+      for (let pageIdx = 0; pageIdx < finalPageEls.length; pageIdx++) {
+        const el = finalPageEls[pageIdx];
+        const catName = el.closest('.pdf-category-page')?.querySelector('.pdf-category-header h2')?.textContent;
+        try {
+          const rect = el.getBoundingClientRect();
+          console.log(`Página ${pageIdx + 1}/${finalPageEls.length} (${catName || 'portada'}): ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
+          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+          const imgData = canvas.toDataURL('image/jpeg', 0.92);
+          if (!imgData || imgData === 'data:,') {
+            throw new Error('El canvas capturado quedó vacío (posible límite de tamaño del navegador)');
+          }
+          if (!isFirstPage) pdf.addPage('a4', 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+          isFirstPage = false;
+        } catch (pageErr) {
+          throw new Error(`Falló la página ${pageIdx + 1}/${finalPageEls.length} (${catName || 'portada'}): ${pageErr.message}`);
+        }
       }
-
-      finalPageEls.forEach((el) => {
-        el.style.removeProperty('width');
-        el.style.removeProperty('min-height');
-      });
 
       const fileName = (menu?.name || 'carta').replace(/[^\w\-]+/g, '_');
       pdf.save(`${fileName}.pdf`);
     } catch (err) {
       console.error('Export PDF failed', err);
-      alert('No se pudo generar el PDF. Intenta nuevamente.');
+      alert(`No se pudo generar el PDF: ${err.message || 'error desconocido'}`);
     } finally {
+      finalPageEls.forEach((el) => {
+        el.style.removeProperty('width');
+        el.style.removeProperty('min-height');
+      });
       setExportLayout(null);
       setExporting(false);
     }
