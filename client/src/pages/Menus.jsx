@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 const FONTS = [
   'Playfair Display', 'Lora', 'Cormorant Garamond',
   'Montserrat', 'Raleway', 'Great Vibes', 'Josefin Sans',
+  'Merriweather', 'Oswald', 'Abril Fatface', 'Dancing Script', 'Bebas Neue', 'Poppins',
 ];
 
 const PRESETS = [
@@ -39,8 +40,11 @@ function MenuForm({ initial, onSave, onCancel }) {
     titleFontColor: initial?.titleFontColor || null,
     categoryFontColor: initial?.categoryFontColor || null,
     dishFontColor: initial?.dishFontColor || null,
-    categoryFontSize: initial?.categoryFontSize || 'medium',
-    dishFontSize: initial?.dishFontSize || 'medium',
+    pdfTopMargin: initial?.pdfTopMargin ?? 0,
+    pdfBottomMargin: initial?.pdfBottomMargin ?? 0,
+    pdfLeftMargin: initial?.pdfLeftMargin ?? 0,
+    pdfRightMargin: initial?.pdfRightMargin ?? 0,
+    dishSpacing: initial?.dishSpacing ?? 16,
   });
   const [loading, setLoading] = useState(false);
 
@@ -60,8 +64,11 @@ function MenuForm({ initial, onSave, onCancel }) {
         titleFontColor: form.titleFontColor,
         categoryFontColor: form.categoryFontColor,
         dishFontColor: form.dishFontColor,
-        categoryFontSize: form.categoryFontSize,
-        dishFontSize: form.dishFontSize,
+        pdfTopMargin: Number(form.pdfTopMargin) || 0,
+        pdfBottomMargin: Number(form.pdfBottomMargin) || 0,
+        pdfLeftMargin: Number(form.pdfLeftMargin) || 0,
+        pdfRightMargin: Number(form.pdfRightMargin) || 0,
+        dishSpacing: Number(form.dishSpacing) || 0,
       });
     } finally {
       setLoading(false);
@@ -162,37 +169,46 @@ function MenuForm({ initial, onSave, onCancel }) {
       </div>
 
       <div>
-        <label className="label">Tamaño de fuente — Categorías</label>
-        <div className="flex gap-2">
-          {[['small', 'Chico'], ['medium', 'Medio'], ['large', 'Grande']].map(([val, label]) => (
-            <button key={val} type="button"
-              onClick={() => setForm({ ...form, categoryFontSize: val })}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                form.categoryFontSize === val
-                  ? 'bg-amber-700 text-white border-amber-700'
-                  : 'border-stone-300 text-stone-600 hover:bg-stone-50'
-              }`}>
-              {label}
-            </button>
-          ))}
+        <label className="label">Márgenes del PDF</label>
+        <p className="text-xs text-stone-400 font-body mb-2">
+          Espacio en blanco alrededor de cada página al exportar/imprimir la carta.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Superior (px)</label>
+            <input type="number" min="0" max="300" className="input"
+              value={form.pdfTopMargin}
+              onChange={(e) => setForm({ ...form, pdfTopMargin: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Inferior (px)</label>
+            <input type="number" min="0" max="300" className="input"
+              value={form.pdfBottomMargin}
+              onChange={(e) => setForm({ ...form, pdfBottomMargin: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Izquierdo (px)</label>
+            <input type="number" min="0" max="300" className="input"
+              value={form.pdfLeftMargin}
+              onChange={(e) => setForm({ ...form, pdfLeftMargin: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Derecho (px)</label>
+            <input type="number" min="0" max="300" className="input"
+              value={form.pdfRightMargin}
+              onChange={(e) => setForm({ ...form, pdfRightMargin: e.target.value })} />
+          </div>
         </div>
       </div>
 
       <div>
-        <label className="label">Tamaño de fuente — Platos</label>
-        <div className="flex gap-2">
-          {[['small', 'Chico'], ['medium', 'Medio'], ['large', 'Grande']].map(([val, label]) => (
-            <button key={val} type="button"
-              onClick={() => setForm({ ...form, dishFontSize: val })}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                form.dishFontSize === val
-                  ? 'bg-amber-700 text-white border-amber-700'
-                  : 'border-stone-300 text-stone-600 hover:bg-stone-50'
-              }`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <label className="label">Separación entre platos (px)</label>
+        <p className="text-xs text-stone-400 font-body mb-2">
+          Espacio vertical entre un plato y el siguiente al imprimir/exportar la carta.
+        </p>
+        <input type="number" min="0" max="80" className="input w-32"
+          value={form.dishSpacing}
+          onChange={(e) => setForm({ ...form, dishSpacing: e.target.value })} />
       </div>
 
       <div>

@@ -12,8 +12,11 @@ const menuSchema = new mongoose.Schema({
   titleFontColor: { type: String, default: null },
   categoryFontColor: { type: String, default: null },
   dishFontColor: { type: String, default: null },
-  categoryFontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
-  dishFontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+  pdfTopMargin: { type: Number, default: 0, min: 0, max: 300 },
+  pdfBottomMargin: { type: Number, default: 0, min: 0, max: 300 },
+  pdfLeftMargin: { type: Number, default: 0, min: 0, max: 300 },
+  pdfRightMargin: { type: Number, default: 0, min: 0, max: 300 },
+  dishSpacing: { type: Number, default: 16, min: 0, max: 80 },
   categories: [{
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     order: { type: Number, default: 0 },

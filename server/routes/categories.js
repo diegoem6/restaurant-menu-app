@@ -56,8 +56,18 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/categories
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, description } = req.body;
-    const cat = await Category.create({ name, description, dishes: [], owner: req.user._id });
+    const { name, description, categoryFontSize, dishFontSize, categoryTitleBold, subcategoryTitleBold, dishNameBold } = req.body;
+    const cat = await Category.create({
+      name,
+      description,
+      categoryFontSize: categoryFontSize ?? 36,
+      dishFontSize: dishFontSize ?? 20,
+      categoryTitleBold: categoryTitleBold ?? true,
+      subcategoryTitleBold: subcategoryTitleBold ?? true,
+      dishNameBold: dishNameBold ?? true,
+      dishes: [],
+      owner: req.user._id,
+    });
     res.status(201).json(cat);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -72,9 +82,14 @@ router.put('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, cat))
       return res.status(403).json({ message: 'Forbidden' });
 
-    const { name, description } = req.body;
+    const { name, description, categoryFontSize, dishFontSize, categoryTitleBold, subcategoryTitleBold, dishNameBold } = req.body;
     if (name !== undefined) cat.name = name;
     if (description !== undefined) cat.description = description;
+    if (categoryFontSize !== undefined) cat.categoryFontSize = categoryFontSize;
+    if (dishFontSize !== undefined) cat.dishFontSize = dishFontSize;
+    if (categoryTitleBold !== undefined) cat.categoryTitleBold = categoryTitleBold;
+    if (subcategoryTitleBold !== undefined) cat.subcategoryTitleBold = subcategoryTitleBold;
+    if (dishNameBold !== undefined) cat.dishNameBold = dishNameBold;
     await cat.save();
     await cat.populate('dishes.dish');
     res.json(cat);

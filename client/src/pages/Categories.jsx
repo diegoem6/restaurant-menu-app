@@ -12,13 +12,27 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import SortableItem from '../components/SortableItem';
 
 function CategoryForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState({ name: initial?.name || '', description: initial?.description || '' });
+  const [form, setForm] = useState({
+    name: initial?.name || '',
+    description: initial?.description || '',
+    categoryFontSize: initial?.categoryFontSize ?? 36,
+    dishFontSize: initial?.dishFontSize ?? 20,
+    categoryTitleBold: initial?.categoryTitleBold ?? true,
+    subcategoryTitleBold: initial?.subcategoryTitleBold ?? true,
+    dishNameBold: initial?.dishNameBold ?? true,
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try { await onSave(form); }
+    try {
+      await onSave({
+        ...form,
+        categoryFontSize: Number(form.categoryFontSize) || 36,
+        dishFontSize: Number(form.dishFontSize) || 20,
+      });
+    }
     finally { setLoading(false); }
   };
 
@@ -32,6 +46,49 @@ function CategoryForm({ initial, onSave, onCancel }) {
         <label className="label">Descripción</label>
         <textarea className="input resize-none" rows={2} value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })} />
+      </div>
+      <div>
+        <label className="label">Tamaño de texto en la carta (px)</label>
+        <p className="text-xs text-stone-400 font-body mb-2">
+          Controla el tamaño del título de esta categoría (y, proporcionalmente, el de sus subcategorías) y el de los nombres de los platos al imprimir/exportar.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Categoría</label>
+            <input type="number" min="8" max="120" className="input"
+              value={form.categoryFontSize}
+              onChange={(e) => setForm({ ...form, categoryFontSize: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">Platos</label>
+            <input type="number" min="8" max="80" className="input"
+              value={form.dishFontSize}
+              onChange={(e) => setForm({ ...form, dishFontSize: e.target.value })} />
+          </div>
+        </div>
+      </div>
+      <div>
+        <label className="label">Negrita</label>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+            <input type="checkbox" className="accent-amber-600"
+              checked={form.categoryTitleBold}
+              onChange={(e) => setForm({ ...form, categoryTitleBold: e.target.checked })} />
+            Título de categoría
+          </label>
+          <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+            <input type="checkbox" className="accent-amber-600"
+              checked={form.subcategoryTitleBold}
+              onChange={(e) => setForm({ ...form, subcategoryTitleBold: e.target.checked })} />
+            Título de subcategoría
+          </label>
+          <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+            <input type="checkbox" className="accent-amber-600"
+              checked={form.dishNameBold}
+              onChange={(e) => setForm({ ...form, dishNameBold: e.target.checked })} />
+            Nombre de platos
+          </label>
+        </div>
       </div>
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onCancel} className="btn-secondary">Cancelar</button>

@@ -67,7 +67,7 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/menus
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, categoryFontSize, dishFontSize } = req.body;
+    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing } = req.body;
     const menu = await Menu.create({
       name,
       backgroundTemplate: backgroundTemplate || { type: 'preset', preset: 'cream' },
@@ -76,8 +76,11 @@ router.post('/', auth, async (req, res) => {
       titleFontColor: titleFontColor || null,
       categoryFontColor: categoryFontColor || null,
       dishFontColor: dishFontColor || null,
-      categoryFontSize: categoryFontSize || 'medium',
-      dishFontSize: dishFontSize || 'medium',
+      pdfTopMargin: pdfTopMargin ?? 0,
+      pdfBottomMargin: pdfBottomMargin ?? 0,
+      pdfLeftMargin: pdfLeftMargin ?? 0,
+      pdfRightMargin: pdfRightMargin ?? 0,
+      dishSpacing: dishSpacing ?? 16,
       categories: [],
       owner: req.user._id,
     });
@@ -95,7 +98,7 @@ router.put('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, menu))
       return res.status(403).json({ message: 'Forbidden' });
 
-    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, categoryFontSize, dishFontSize } = req.body;
+    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing } = req.body;
     if (name !== undefined) menu.name = name;
     if (backgroundTemplate !== undefined) menu.backgroundTemplate = backgroundTemplate;
     if (logo !== undefined) menu.logo = logo;
@@ -103,8 +106,11 @@ router.put('/:id', auth, async (req, res) => {
     if (titleFontColor !== undefined) menu.titleFontColor = titleFontColor;
     if (categoryFontColor !== undefined) menu.categoryFontColor = categoryFontColor;
     if (dishFontColor !== undefined) menu.dishFontColor = dishFontColor;
-    if (categoryFontSize !== undefined) menu.categoryFontSize = categoryFontSize;
-    if (dishFontSize !== undefined) menu.dishFontSize = dishFontSize;
+    if (pdfTopMargin !== undefined) menu.pdfTopMargin = pdfTopMargin;
+    if (pdfBottomMargin !== undefined) menu.pdfBottomMargin = pdfBottomMargin;
+    if (pdfLeftMargin !== undefined) menu.pdfLeftMargin = pdfLeftMargin;
+    if (pdfRightMargin !== undefined) menu.pdfRightMargin = pdfRightMargin;
+    if (dishSpacing !== undefined) menu.dishSpacing = dishSpacing;
     await menu.save();
     await menu.populate({ path: 'categories.category', populate: { path: 'dishes.dish' } });
     res.json(await attachSubcategories(menu));
