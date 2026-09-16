@@ -9,6 +9,7 @@ import ImportDishes from './pages/ImportDishes';
 import Categories from './pages/Categories';
 import Menus from './pages/Menus';
 import MenuEditor from './pages/MenuEditor';
+import MenuDesigner from './pages/MenuDesigner';
 import PrintMenu from './pages/PrintMenu';
 import Users from './pages/Users';
 
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="categories" element={<Categories />} />
         <Route path="menus" element={<Menus />} />
         <Route path="menus/:id/edit" element={<MenuEditor />} />
+        <Route path="menus/:id/design" element={<MenuDesigner />} />
         <Route path="users" element={
           <ProtectedRoute adminOnly><Users /></ProtectedRoute>
         } />

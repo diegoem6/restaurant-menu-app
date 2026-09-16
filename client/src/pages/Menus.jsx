@@ -4,30 +4,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
-
-const FONTS = [
-  'Playfair Display', 'Lora', 'Cormorant Garamond',
-  'Montserrat', 'Raleway', 'Great Vibes', 'Josefin Sans',
-  'Merriweather', 'Oswald', 'Abril Fatface', 'Dancing Script', 'Bebas Neue', 'Poppins',
-];
-
-const PRESETS = [
-  { id: 'white', label: 'Blanco', bg: '#ffffff', text: '#1c1917' },
-  { id: 'cream', label: 'Crema', bg: '#fef9f0', text: '#1c1917' },
-  { id: 'dark', label: 'Oscuro', bg: '#1c1917', text: '#fafaf9' },
-  { id: 'forest', label: 'Bosque', bg: '#1a2e1a', text: '#f0fdf4' },
-  { id: 'wine', label: 'Vino', bg: '#3b0a0a', text: '#fef2f2' },
-  { id: 'slate', label: 'Pizarra', bg: '#1e293b', text: '#f8fafc' },
-];
-
-function toBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
+import { FONTS, BG_PRESETS as PRESETS, toBase64 } from '../lib/menuAssets';
 
 function MenuForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState({
@@ -293,7 +270,7 @@ const presetBg = (id) => PRESETS.find((p) => p.id === id)?.bg || '#fef9f0';
 export default function Menus() {
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => { loadMenus(); }, []);
@@ -313,19 +290,8 @@ export default function Menus() {
     try {
       const res = await api.post('/menus', data);
       setMenus([res.data, ...menus]);
-      setModal(null);
+      setShowCreate(false);
       toast.success('Carta creada');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Error');
-    }
-  };
-
-  const handleEdit = async (data) => {
-    try {
-      const res = await api.put(`/menus/${modal._id}`, data);
-      setMenus(menus.map((m) => (m._id === modal._id ? res.data : m)));
-      setModal(null);
-      toast.success('Carta actualizada');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error');
     }
@@ -348,7 +314,7 @@ export default function Menus() {
           <h1 className="text-3xl font-heading text-stone-800">Cartas</h1>
           <p className="text-stone-500 text-sm mt-1 font-body">{menus.length} cartas</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal('create')}>
+        <button className="btn-primary" onClick={() => setShowCreate(true)}>
           + Nueva carta
         </button>
       </div>
@@ -404,13 +370,13 @@ export default function Menus() {
                     >
                       🖨️
                     </Link>
-                    <button
-                      onClick={() => setModal(menu)}
+                    <Link
+                      to={`/menus/${menu._id}/design`}
                       className="btn-secondary px-3 text-xs"
-                      title="Configuración"
+                      title="Diseñar"
                     >
-                      ⚙️
-                    </button>
+                      🎨
+                    </Link>
                     <button
                       onClick={() => setDeleteTarget(menu)}
                       className="btn-ghost px-3 text-xs hover:text-red-500"
@@ -426,18 +392,17 @@ export default function Menus() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal */}
       <Modal
-        isOpen={!!modal}
-        onClose={() => setModal(null)}
-        title={modal === 'create' ? 'Nueva carta' : 'Configurar carta'}
+        isOpen={showCreate}
+        onClose={() => setShowCreate(false)}
+        title="Nueva carta"
         size="lg"
       >
-        {modal && (
+        {showCreate && (
           <MenuForm
-            initial={modal === 'create' ? null : modal}
-            onSave={modal === 'create' ? handleCreate : handleEdit}
-            onCancel={() => setModal(null)}
+            onSave={handleCreate}
+            onCancel={() => setShowCreate(false)}
           />
         )}
       </Modal>

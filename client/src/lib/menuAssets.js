@@ -1,0 +1,26 @@
+// Shared constants/helpers for editing a carta's look — used by the menu
+// settings form (Menus.jsx) and the live design preview (MenuDesigner.jsx).
+
+export const FONTS = [
+  'Playfair Display', 'Lora', 'Cormorant Garamond',
+  'Montserrat', 'Raleway', 'Great Vibes', 'Josefin Sans',
+  'Merriweather', 'Oswald', 'Abril Fatface', 'Dancing Script', 'Bebas Neue', 'Poppins',
+];
+
+export const BG_PRESETS = [
+  { id: 'white', label: 'Blanco', bg: '#ffffff', text: '#1c1917' },
+  { id: 'cream', label: 'Crema', bg: '#fef9f0', text: '#1c1917' },
+  { id: 'dark', label: 'Oscuro', bg: '#1c1917', text: '#fafaf9' },
+  { id: 'forest', label: 'Bosque', bg: '#1a2e1a', text: '#f0fdf4' },
+  { id: 'wine', label: 'Vino', bg: '#3b0a0a', text: '#fef2f2' },
+  { id: 'slate', label: 'Pizarra', bg: '#1e293b', text: '#f8fafc' },
+];
+
+export function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
