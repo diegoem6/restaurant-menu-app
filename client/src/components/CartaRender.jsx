@@ -79,13 +79,43 @@ export function buildCategoryUnits(category) {
   return units;
 }
 
-export function DishRow({ dish, isLast, font, hasBgImage, textColor, dishNameColor, dishFontSize, dishNameBold, dishSpacing }) {
+// Stable identity for a unit (dish or subcategory header), used as the key
+// into a category's per-unit custom box layout.
+export function unitKey(unit) {
+  if (unit.type === 'subheader') return `sub:${unit.sub._id}`;
+  const dishId = unit.entry.dish?._id || unit.entry.dish;
+  return `dish:${dishId}`;
+}
+
+const DEFAULT_DISH_BOX_WIDTH = 500;
+const DEFAULT_DISH_BOX_HEIGHT = 70;
+const DISH_BOX_GAP = 12;
+
+// Resolves every unit's box for the "custom per-dish layout" mode: units
+// with a saved box keep it, units with none (e.g. a dish added after the
+// category was customized) get stacked below the lowest saved box so
+// nothing is left invisible. Returned in the same order as `units`.
+export function resolveDishBoxes(units, savedBoxes = []) {
+  const savedByKey = new Map(savedBoxes.map((b) => [b.key, b]));
+  let fallbackY = savedBoxes.reduce((max, b) => Math.max(max, (b.y || 0) + (b.height || 0)), 0);
+  return units.map((unit) => {
+    const key = unitKey(unit);
+    const saved = savedByKey.get(key);
+    if (saved) return { key, x: saved.x, y: saved.y, width: saved.width, height: saved.height };
+    const box = { key, x: 0, y: fallbackY, width: DEFAULT_DISH_BOX_WIDTH, height: DEFAULT_DISH_BOX_HEIGHT };
+    fallbackY += DEFAULT_DISH_BOX_HEIGHT + DISH_BOX_GAP;
+    return box;
+  });
+}
+
+export function DishRow({ dish, isLast, font, hasBgImage, textColor, dishNameColor, dishFontSize, dishNameBold, dishSpacing, innerRef }) {
   const prices = dish.prices || [];
   const multiPrice = prices.length > 1;
   const secondaryFontSize = dishFontSize * 0.65;
   const priceWeightClass = dishNameBold ? 'font-bold' : 'font-normal';
   return (
     <div
+      ref={innerRef}
       className={`pdf-unit ${!isLast ? 'border-b' : ''}`}
       style={{
         borderBottomColor: hasBgImage ? 'rgba(255,255,255,0.15)' : `${textColor}22`,
@@ -181,7 +211,51 @@ export function SubHeaderBlock({ sub, font, categoryColor, hasBgImage, accentCol
   );
 }
 
-export function CoverPage({ menu, theme }) {
+// Renders one free element's content only (no positioning) — the caller
+// decides how to place it: absolutely-positioned for the read-only PDF/print
+// view, or wrapped with drag/resize handles in the interactive designer.
+export function FreeElementView({ el, defaultFont }) {
+  if (el.type === 'image') {
+    if (!el.src) {
+      return (
+        <div className="w-full h-full flex items-center justify-center text-2xl bg-stone-100/60 border border-dashed border-stone-300 rounded">
+          📷
+        </div>
+      );
+    }
+    return (
+      <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: el.opacity ?? 1, display: 'block' }} />
+    );
+  }
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      fontFamily: defaultFont, fontSize: el.fontSize, color: el.color,
+      fontWeight: el.bold ? 700 : 400, textAlign: el.align || 'left',
+      overflow: 'hidden', whiteSpace: 'pre-wrap', opacity: el.opacity ?? 1,
+    }}>
+      {el.text}
+    </div>
+  );
+}
+
+function FreeElementsLayer({ elements, defaultFont }) {
+  if (!elements || elements.length === 0) return null;
+  return (
+    <>
+      {elements.map((el) => (
+        <div key={el._id} style={{
+          position: 'absolute', left: el.x, top: el.y, width: el.width, height: el.height,
+          zIndex: 20 + (el.zIndex || 0),
+        }}>
+          <FreeElementView el={el} defaultFont={defaultFont} />
+        </div>
+      ))}
+    </>
+  );
+}
+
+export function CoverPage({ menu, theme, freeElements = [] }) {
   const { logo, font, name } = menu;
   const {
     hasBgImage, customImageUrl, bgStyle, textColor, accentColor, titleColor,
@@ -226,6 +300,7 @@ export function CoverPage({ menu, theme }) {
           Menú
         </p>
       </div>
+      <FreeElementsLayer elements={freeElements} defaultFont={font} />
     </div>
   );
 }
@@ -236,12 +311,115 @@ export function CategoryPage({
   categoryFontSize, subcategoryFontSize, dishFontSize,
   categoryTitleBold, subcategoryTitleBold, dishNameBold, dishSpacing,
   bgStyle, pagePaddingTop, pagePaddingBottom, pagePaddingLeft, pagePaddingRight, logo, exporting,
+  freeElements = [],
+  // Custom position/size for the title block and for each individual dish
+  // (or subcategory header) unit. Both are set together to switch out of
+  // the classic (automatically flowing, centered) layout — see
+  // MenuDesigner's "Personalizar diseño" for how these get materialized
+  // from the classic layout's live measured positions.
+  titleBox, dishBoxes, titleRef,
+  // Only used in the designer, in classic (non-boxed) mode, to measure each
+  // unit's live position/size when switching into custom layout.
+  registerUnitRef,
 }) {
   // If a page starts mid-subcategory (the header landed on a previous page),
   // repeat that subcategory's title at the top so the dishes keep context.
   const repeatedSub = units.length > 0 && units[0].type === 'dish' && units[0].sub
     ? units[0].sub
     : null;
+  const isBoxed = !!titleBox;
+  const resolvedDishBoxes = isBoxed ? resolveDishBoxes(units, dishBoxes) : [];
+
+  const titleContent = (
+    <>
+      {logo && (
+        <img src={logo} alt="logo"
+          className="mx-auto mb-4 h-12 object-contain opacity-70" />
+      )}
+      <h2
+        className={`mb-2 ${categoryTitleBold ? 'font-bold' : 'font-normal'}`}
+        style={{ fontFamily: font, color: categoryColor, fontSize: categoryFontSize }}
+      >
+        {category.name}
+      </h2>
+      <div
+        className="w-16 h-0.5 mx-auto mb-3"
+        style={{ backgroundColor: hasBgImage ? 'rgba(255,255,255,0.4)' : accentColor }}
+      />
+      {category.description && (
+        <p className="text-base opacity-60 italic max-w-lg mx-auto"
+          style={{ color: dishNameColor }}>
+          {category.description}
+        </p>
+      )}
+    </>
+  );
+
+  const dishListContent = (
+    <>
+      {repeatedSub && (
+        <div className="mb-4">
+          <SubHeaderBlock sub={repeatedSub} font={font} categoryColor={categoryColor}
+            hasBgImage={hasBgImage} accentColor={accentColor}
+            subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
+            dishNameColor={dishNameColor}
+            showDescription={false} />
+        </div>
+      )}
+      {units.map((unit, idx) => {
+        const key = unitKey(unit);
+        const setRef = registerUnitRef ? (node) => registerUnitRef(key, node) : undefined;
+        if (unit.type === 'subheader') {
+          return (
+            <div key={`sub-${unit.sub._id}`} ref={setRef} className="pdf-unit mt-8">
+              <SubHeaderBlock sub={unit.sub} font={font} categoryColor={categoryColor}
+                hasBgImage={hasBgImage} accentColor={accentColor}
+                subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
+                dishNameColor={dishNameColor}
+                showDescription />
+            </div>
+          );
+        }
+        const dish = unit.entry.dish;
+        if (!dish || typeof dish !== 'object') return null;
+        return (
+          <DishRow key={dish._id} dish={dish} isLast={idx === units.length - 1}
+            font={font} hasBgImage={hasBgImage} textColor={textColor}
+            dishNameColor={dishNameColor} dishFontSize={dishFontSize} dishNameBold={dishNameBold}
+            dishSpacing={dishSpacing} innerRef={setRef} />
+        );
+      })}
+    </>
+  );
+
+  // Each dish/subheader gets its own absolutely-positioned box — this is
+  // what makes "arrastrar cada plato" possible in the designer: every unit
+  // is independently draggable instead of moving as part of one flowing list.
+  const boxedDishContent = resolvedDishBoxes.map((box, idx) => {
+    const unit = units[idx];
+    const boxStyle = { position: 'absolute', left: box.x, top: box.y, width: box.width, height: box.height };
+    if (unit.type === 'subheader') {
+      return (
+        <div key={box.key} style={boxStyle}>
+          <SubHeaderBlock sub={unit.sub} font={font} categoryColor={categoryColor}
+            hasBgImage={hasBgImage} accentColor={accentColor}
+            subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
+            dishNameColor={dishNameColor}
+            showDescription />
+        </div>
+      );
+    }
+    const dish = unit.entry.dish;
+    if (!dish || typeof dish !== 'object') return null;
+    return (
+      <div key={box.key} style={boxStyle}>
+        <DishRow dish={dish} isLast
+          font={font} hasBgImage={hasBgImage} textColor={textColor}
+          dishNameColor={dishNameColor} dishFontSize={dishFontSize} dishNameBold={dishNameBold}
+          dishSpacing={dishSpacing} />
+      </div>
+    );
+  });
 
   return (
     <div
@@ -262,62 +440,28 @@ export function CategoryPage({
         <div className="fixed inset-0 bg-black/20 print:hidden" style={{ zIndex: -1 }} />
       )}
 
-      <div className="max-w-3xl mx-auto relative z-10">
-        <div className="pdf-category-header text-center mb-10">
-          {logo && (
-            <img src={logo} alt="logo"
-              className="mx-auto mb-4 h-12 object-contain opacity-70" />
-          )}
-          <h2
-            className={`mb-2 ${categoryTitleBold ? 'font-bold' : 'font-normal'}`}
-            style={{ fontFamily: font, color: categoryColor, fontSize: categoryFontSize }}
-          >
-            {category.name}
-          </h2>
+      {isBoxed ? (
+        <>
           <div
-            className="w-16 h-0.5 mx-auto mb-3"
-            style={{ backgroundColor: hasBgImage ? 'rgba(255,255,255,0.4)' : accentColor }}
-          />
-          {category.description && (
-            <p className="text-base opacity-60 italic max-w-lg mx-auto"
-              style={{ color: dishNameColor }}>
-              {category.description}
-            </p>
-          )}
-        </div>
-
-        {repeatedSub && (
-          <div className="mb-4">
-            <SubHeaderBlock sub={repeatedSub} font={font} categoryColor={categoryColor}
-              hasBgImage={hasBgImage} accentColor={accentColor}
-              subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
-              dishNameColor={dishNameColor}
-              showDescription={false} />
+            className="pdf-category-header text-center"
+            style={{ position: 'absolute', left: titleBox.x, top: titleBox.y, width: titleBox.width, height: titleBox.height }}
+          >
+            {titleContent}
           </div>
-        )}
+          {boxedDishContent}
+        </>
+      ) : (
+        <div className="max-w-3xl mx-auto relative z-10">
+          <div ref={titleRef} className="pdf-category-header text-center mb-10">
+            {titleContent}
+          </div>
+          <div>
+            {dishListContent}
+          </div>
+        </div>
+      )}
 
-        {units.map((unit, idx) => {
-          if (unit.type === 'subheader') {
-            return (
-              <div key={`sub-${unit.sub._id}`} className="pdf-unit mt-8">
-                <SubHeaderBlock sub={unit.sub} font={font} categoryColor={categoryColor}
-                  hasBgImage={hasBgImage} accentColor={accentColor}
-                  subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
-                  dishNameColor={dishNameColor}
-                  showDescription />
-              </div>
-            );
-          }
-          const dish = unit.entry.dish;
-          if (!dish || typeof dish !== 'object') return null;
-          return (
-            <DishRow key={dish._id} dish={dish} isLast={idx === units.length - 1}
-              font={font} hasBgImage={hasBgImage} textColor={textColor}
-              dishNameColor={dishNameColor} dishFontSize={dishFontSize} dishNameBold={dishNameBold}
-              dishSpacing={dishSpacing} />
-          );
-        })}
-      </div>
+      <FreeElementsLayer elements={freeElements} defaultFont={font} />
     </div>
   );
 }

@@ -98,7 +98,7 @@ router.put('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, menu))
       return res.status(403).json({ message: 'Forbidden' });
 
-    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing } = req.body;
+    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing, freeElements, blockLayout } = req.body;
     if (name !== undefined) menu.name = name;
     if (backgroundTemplate !== undefined) menu.backgroundTemplate = backgroundTemplate;
     if (logo !== undefined) menu.logo = logo;
@@ -111,6 +111,8 @@ router.put('/:id', auth, async (req, res) => {
     if (pdfLeftMargin !== undefined) menu.pdfLeftMargin = pdfLeftMargin;
     if (pdfRightMargin !== undefined) menu.pdfRightMargin = pdfRightMargin;
     if (dishSpacing !== undefined) menu.dishSpacing = dishSpacing;
+    if (freeElements !== undefined) menu.freeElements = freeElements;
+    if (blockLayout !== undefined) menu.blockLayout = blockLayout;
     await menu.save();
     await menu.populate({ path: 'categories.category', populate: { path: 'dishes.dish' } });
     res.json(await attachSubcategories(menu));

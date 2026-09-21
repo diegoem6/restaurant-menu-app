@@ -93,6 +93,14 @@ export default function PrintMenu() {
 
   const sharedPageProps = { ...theme, font, logo: menu.logo, exporting };
 
+  const elementsForPage = (pageKey) => (menu.freeElements || []).filter((el) => el.page === pageKey);
+
+  // A category with a saved blockLayout entry uses a custom title position
+  // and a per-dish free layout instead of the classic automatic flow — it
+  // renders on a single page, exactly as placed in the designer.
+  const blockLayoutForCategory = (categoryId) =>
+    (menu.blockLayout || []).find((b) => (b.category?._id || b.category) === categoryId);
+
   const handleExportPdf = async () => {
     if (exporting || !pagesRef.current) return;
     setExporting(true);
@@ -120,13 +128,21 @@ export default function PrintMenu() {
 
       // 2. Turn each category into one or more pages that each fit within
       // one A4 sheet (margins + repeated titles included), from real heights.
-      const pageContentBudget = PDF_PAGE_MIN_HEIGHT - pagePaddingTop - pagePaddingBottom - PAGE_SAFETY_BUFFER;
+      // A category with a custom layout renders as a single page — every
+      // dish already has an explicit position placed by the user in the
+      // designer, so there's nothing to paginate.
+      const classicPageContentBudget = PDF_PAGE_MIN_HEIGHT - pagePaddingTop - pagePaddingBottom - PAGE_SAFETY_BUFFER;
       const layout = sortedCategories.map(({ category }) => {
         const units = buildCategoryUnits(category);
+        const catLayout = blockLayoutForCategory(category._id);
+        if (catLayout) {
+          return { category, catLayout, pages: [units] };
+        }
         const { headerHeight, unitHeights } = measurementByCatId.get(category._id) || { headerHeight: 0, unitHeights: [] };
-        const groups = paginateCategory(units, unitHeights, headerHeight, pageContentBudget);
+        const groups = paginateCategory(units, unitHeights, headerHeight, classicPageContentBudget);
         return {
           category,
+          catLayout: null,
           pages: groups.map((g) => units.slice(g.start, g.end)),
         };
       });
@@ -208,11 +224,12 @@ export default function PrintMenu() {
       </div>
 
       {/* Cover / First page */}
-      <CoverPage menu={menu} theme={theme} />
+      <CoverPage menu={menu} theme={theme} freeElements={elementsForPage('cover')} />
 
-      {/* Categories — each on a new page (or several, if paginated for export) */}
+      {/* Categories — each on a new page (or several, if paginated for export).
+          Free elements only decorate a category's first physical page. */}
       {exportLayout
-        ? exportLayout.flatMap(({ category, pages }) =>
+        ? exportLayout.flatMap(({ category, pages, catLayout }) =>
             pages.map((units, i) => (
               <CategoryPage
                 key={`${category._id}-${i}`}
@@ -220,18 +237,27 @@ export default function PrintMenu() {
                 units={units}
                 {...sharedPageProps}
                 {...fontSizesFor(category)}
+                freeElements={i === 0 ? elementsForPage(category._id) : []}
+                titleBox={catLayout?.titleBox}
+                dishBoxes={catLayout?.dishBoxes}
               />
             ))
           )
-        : sortedCategories.map(({ category }) => (
-            <CategoryPage
-              key={category._id}
-              category={category}
-              units={buildCategoryUnits(category)}
-              {...sharedPageProps}
-              {...fontSizesFor(category)}
-            />
-          ))}
+        : sortedCategories.map(({ category }) => {
+            const catLayout = blockLayoutForCategory(category._id);
+            return (
+              <CategoryPage
+                key={category._id}
+                category={category}
+                units={buildCategoryUnits(category)}
+                {...sharedPageProps}
+                {...fontSizesFor(category)}
+                freeElements={elementsForPage(category._id)}
+                titleBox={catLayout?.titleBox}
+                dishBoxes={catLayout?.dishBoxes}
+              />
+            );
+          })}
 
       {/* Print CSS injected inline */}
       <style>{`
