@@ -2,12 +2,23 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
-import { FONTS, BG_PRESETS, toBase64 } from '../lib/menuAssets';
-import { deriveMenuTheme, fontSizesFor, buildCategoryUnits, unitKey, resolveDishBoxes, CoverPage, CategoryPage, FreeElementView } from '../components/CartaRender';
+import { FONT_GROUPS, BG_PRESETS, toBase64 } from '../lib/menuAssets';
+import { deriveMenuTheme, deriveMenuFonts, fontSizesFor, buildCategoryUnits, unitKey, resolveDishBoxes, CoverPage, CategoryPage, FreeElementView } from '../components/CartaRender';
 
 const PREVIEW_PAGE_WIDTH = 794;
 const isObjectId = (s) => /^[0-9a-fA-F]{24}$/.test(s || '');
 const genTempId = () => `tmp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+// Renders <option>s grouped by style (Clásicas, Diseño gráfico, etc.).
+function FontOptions() {
+  return FONT_GROUPS.map((group) => (
+    <optgroup key={group.label} label={group.label}>
+      {group.fonts.map((f) => (
+        <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+      ))}
+    </optgroup>
+  ));
+}
 
 // Human-readable label for a dish/subheader unit's overlay, from its box key.
 const dishBoxLabel = (units, key) => {
@@ -249,6 +260,8 @@ function DishBoxOverlay({ box, label, scale, selected, resizable, onMouseDownDra
 const formFromMenu = (m) => ({
   name: m.name || '',
   font: m.font || 'Playfair Display',
+  categoryFont: m.categoryFont || null,
+  dishFont: m.dishFont || null,
   bgType: m.backgroundTemplate?.type || 'preset',
   bgPreset: m.backgroundTemplate?.preset || 'cream',
   bgCustom: m.backgroundTemplate?.customImage || null,
@@ -310,6 +323,8 @@ export default function MenuDesigner() {
     ...menu,
     name: form.name,
     font: form.font,
+    categoryFont: form.categoryFont,
+    dishFont: form.dishFont,
     logo: form.logo,
     titleFontColor: form.titleFontColor,
     categoryFontColor: form.categoryFontColor,
@@ -327,6 +342,7 @@ export default function MenuDesigner() {
   };
 
   const theme = deriveMenuTheme(draftMenu);
+  const fonts = deriveMenuFonts(draftMenu);
   const previewCategory = previewTarget !== 'cover'
     ? sortedCategories.find((c) => c.category._id === previewTarget)?.category
     : null;
@@ -491,6 +507,8 @@ export default function MenuDesigner() {
       const res = await api.put(`/menus/${id}`, {
         name: form.name,
         font: form.font,
+        categoryFont: form.categoryFont,
+        dishFont: form.dishFont,
         backgroundTemplate: draftMenu.backgroundTemplate,
         logo: form.logo,
         titleFontColor: form.titleFontColor,
@@ -544,12 +562,28 @@ export default function MenuDesigner() {
           </div>
 
           <div>
-            <label className="label">Fuente</label>
+            <label className="label">Fuente — Nombre de la carta</label>
             <select className="input" value={form.font}
               onChange={(e) => setForm({ ...form, font: e.target.value })}>
-              {FONTS.map((f) => (
-                <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
-              ))}
+              <FontOptions />
+            </select>
+          </div>
+
+          <div>
+            <label className="label">Fuente — Categorías</label>
+            <select className="input" value={form.categoryFont || ''}
+              onChange={(e) => setForm({ ...form, categoryFont: e.target.value || null })}>
+              <option value="">Usar fuente de la carta ({form.font})</option>
+              <FontOptions />
+            </select>
+          </div>
+
+          <div>
+            <label className="label">Fuente — Platos</label>
+            <select className="input" value={form.dishFont || ''}
+              onChange={(e) => setForm({ ...form, dishFont: e.target.value || null })}>
+              <option value="">Usar fuente de la carta ({form.font})</option>
+              <FontOptions />
             </select>
           </div>
 
@@ -844,10 +878,10 @@ export default function MenuDesigner() {
                     <CategoryPage
                       category={previewCategory}
                       units={previewUnits}
-                      font={draftMenu.font}
                       logo={draftMenu.logo}
                       exporting={false}
                       {...theme}
+                      {...fonts}
                       {...fontSizesFor(previewCategory)}
                       titleBox={catLayout?.titleBox}
                       dishBoxes={catLayout?.dishBoxes}

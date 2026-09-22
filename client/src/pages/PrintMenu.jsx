@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { deriveMenuTheme, fontSizesFor, buildCategoryUnits, CoverPage, CategoryPage } from '../components/CartaRender';
+import { deriveMenuTheme, deriveMenuFonts, fontSizesFor, buildCategoryUnits, CoverPage, CategoryPage } from '../components/CartaRender';
 
 // Standard A4 page size at 96dpi — locked before capture so the export
 // doesn't depend on the exporting device's window size. A category whose
@@ -85,13 +85,14 @@ export default function PrintMenu() {
     </div>
   );
 
-  const { font, categories = [] } = menu;
+  const { categories = [] } = menu;
   const theme = deriveMenuTheme(menu);
+  const fonts = deriveMenuFonts(menu);
   const { bgStyle, textColor, pagePaddingTop, pagePaddingBottom } = theme;
 
   const sortedCategories = [...categories].sort((a, b) => a.order - b.order).filter((c) => c.category);
 
-  const sharedPageProps = { ...theme, font, logo: menu.logo, exporting };
+  const sharedPageProps = { ...theme, ...fonts, logo: menu.logo, exporting };
 
   const elementsForPage = (pageKey) => (menu.freeElements || []).filter((el) => el.page === pageKey);
 
@@ -199,7 +200,7 @@ export default function PrintMenu() {
   };
 
   return (
-    <div ref={pagesRef} style={{ fontFamily: font, ...bgStyle, minHeight: '100vh', color: textColor }}>
+    <div ref={pagesRef} style={{ fontFamily: fonts.titleFont, ...bgStyle, minHeight: '100vh', color: textColor }}>
       {/* Print button - hidden in print */}
       <div className="no-print fixed top-4 right-4 z-50 flex gap-2">
         <button

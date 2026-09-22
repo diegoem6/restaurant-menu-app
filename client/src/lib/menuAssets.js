@@ -1,11 +1,28 @@
 // Shared constants/helpers for editing a carta's look — used by the menu
 // settings form (Menus.jsx) and the live design preview (MenuDesigner.jsx).
 
-export const FONTS = [
-  'Playfair Display', 'Lora', 'Cormorant Garamond',
-  'Montserrat', 'Raleway', 'Great Vibes', 'Josefin Sans',
-  'Merriweather', 'Oswald', 'Abril Fatface', 'Dancing Script', 'Bebas Neue', 'Poppins',
+// Grouped for the font picker's <optgroup>s. `FONTS` (below) is the flat
+// list, kept for anything that just needs to validate/iterate every font.
+export const FONT_GROUPS = [
+  {
+    label: 'Clásicas y elegantes',
+    fonts: ['Playfair Display', 'Lora', 'Cormorant Garamond', 'Merriweather', 'Cinzel'],
+  },
+  {
+    label: 'Modernas',
+    fonts: ['Montserrat', 'Raleway', 'Josefin Sans', 'Oswald', 'Poppins'],
+  },
+  {
+    label: 'Diseño gráfico',
+    fonts: ['Bebas Neue', 'Abril Fatface', 'Anton', 'Archivo Black', 'Righteous', 'Bungee'],
+  },
+  {
+    label: 'Manuscritas',
+    fonts: ['Great Vibes', 'Dancing Script', 'Lobster', 'Pacifico', 'Caveat', 'Permanent Marker', 'Amatic SC'],
+  },
 ];
+
+export const FONTS = FONT_GROUPS.flatMap((g) => g.fonts);
 
 export const BG_PRESETS = [
   { id: 'white', label: 'Blanco', bg: '#ffffff', text: '#1c1917' },

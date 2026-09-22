@@ -4,7 +4,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { FONTS, BG_PRESETS as PRESETS, toBase64 } from '../lib/menuAssets';
+import { FONT_GROUPS, BG_PRESETS as PRESETS, toBase64 } from '../lib/menuAssets';
 
 function MenuForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState({
@@ -64,8 +64,12 @@ function MenuForm({ initial, onSave, onCancel }) {
         <label className="label">Fuente</label>
         <select className="input" value={form.font}
           onChange={(e) => setForm({ ...form, font: e.target.value })}>
-          {FONTS.map((f) => (
-            <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+          {FONT_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.fonts.map((f) => (
+                <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <p className="text-sm mt-1.5 text-stone-500 font-body" style={{ fontFamily: form.font }}>

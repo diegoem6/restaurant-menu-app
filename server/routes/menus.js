@@ -67,12 +67,14 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/menus
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing } = req.body;
+    const { name, backgroundTemplate, logo, font, categoryFont, dishFont, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing } = req.body;
     const menu = await Menu.create({
       name,
       backgroundTemplate: backgroundTemplate || { type: 'preset', preset: 'cream' },
       logo: logo || null,
       font: font || 'Playfair Display',
+      categoryFont: categoryFont || null,
+      dishFont: dishFont || null,
       titleFontColor: titleFontColor || null,
       categoryFontColor: categoryFontColor || null,
       dishFontColor: dishFontColor || null,
@@ -98,11 +100,13 @@ router.put('/:id', auth, async (req, res) => {
     if (!canAccess(req.user, menu))
       return res.status(403).json({ message: 'Forbidden' });
 
-    const { name, backgroundTemplate, logo, font, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing, freeElements, blockLayout } = req.body;
+    const { name, backgroundTemplate, logo, font, categoryFont, dishFont, titleFontColor, categoryFontColor, dishFontColor, pdfTopMargin, pdfBottomMargin, pdfLeftMargin, pdfRightMargin, dishSpacing, freeElements, blockLayout } = req.body;
     if (name !== undefined) menu.name = name;
     if (backgroundTemplate !== undefined) menu.backgroundTemplate = backgroundTemplate;
     if (logo !== undefined) menu.logo = logo;
     if (font !== undefined) menu.font = font;
+    if (categoryFont !== undefined) menu.categoryFont = categoryFont;
+    if (dishFont !== undefined) menu.dishFont = dishFont;
     if (titleFontColor !== undefined) menu.titleFontColor = titleFontColor;
     if (categoryFontColor !== undefined) menu.categoryFontColor = categoryFontColor;
     if (dishFontColor !== undefined) menu.dishFontColor = dishFontColor;

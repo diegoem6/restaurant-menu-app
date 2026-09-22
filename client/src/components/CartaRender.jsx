@@ -49,6 +49,18 @@ export function deriveMenuTheme(menu) {
   };
 }
 
+// Derives the font family for each part of a page. `titleFont` (menu.font)
+// is the carta-wide default — categories and dishes fall back to it unless
+// their own font was set (same override pattern as the *FontColor fields).
+export function deriveMenuFonts(menu) {
+  const titleFont = menu.font || 'Playfair Display';
+  return {
+    titleFont,
+    categoryFont: menu.categoryFont || titleFont,
+    dishFont: menu.dishFont || titleFont,
+  };
+}
+
 // Each category controls its own title/dish text size (in px) and bold.
 export function fontSizesFor(category) {
   const categoryFontSize = category.categoryFontSize || DEFAULT_CATEGORY_FONT_SIZE;
@@ -133,7 +145,7 @@ export function DishRow({ dish, isLast, font, hasBgImage, textColor, dishNameCol
           </p>
           {dish.description && (
             <p className="mt-1 opacity-60 leading-relaxed"
-              style={{ color: dishNameColor, fontSize: dishFontSize }}>
+              style={{ fontFamily: font, color: dishNameColor, fontSize: dishFontSize }}>
               {dish.description}
             </p>
           )}
@@ -203,7 +215,7 @@ export function SubHeaderBlock({ sub, font, categoryColor, hasBgImage, accentCol
       />
       {showDescription && sub.description && (
         <p className="text-sm opacity-55 italic"
-          style={{ color: dishNameColor }}>
+          style={{ fontFamily: font, color: dishNameColor }}>
           {sub.description}
         </p>
       )}
@@ -307,7 +319,11 @@ export function CoverPage({ menu, theme, freeElements = [] }) {
 
 export function CategoryPage({
   category, units,
-  font, hasBgImage, customImageUrl, textColor, accentColor, dishNameColor, categoryColor,
+  // titleFont is the carta-wide default, used only for the free-floating
+  // decorations on this page — the title/category and dish text use their
+  // own (possibly overridden) fonts instead, see deriveMenuFonts.
+  titleFont, categoryFont, dishFont,
+  hasBgImage, customImageUrl, textColor, accentColor, dishNameColor, categoryColor,
   categoryFontSize, subcategoryFontSize, dishFontSize,
   categoryTitleBold, subcategoryTitleBold, dishNameBold, dishSpacing,
   bgStyle, pagePaddingTop, pagePaddingBottom, pagePaddingLeft, pagePaddingRight, logo, exporting,
@@ -338,7 +354,7 @@ export function CategoryPage({
       )}
       <h2
         className={`mb-2 ${categoryTitleBold ? 'font-bold' : 'font-normal'}`}
-        style={{ fontFamily: font, color: categoryColor, fontSize: categoryFontSize }}
+        style={{ fontFamily: categoryFont, color: categoryColor, fontSize: categoryFontSize }}
       >
         {category.name}
       </h2>
@@ -348,7 +364,7 @@ export function CategoryPage({
       />
       {category.description && (
         <p className="text-base opacity-60 italic max-w-lg mx-auto"
-          style={{ color: dishNameColor }}>
+          style={{ fontFamily: categoryFont, color: dishNameColor }}>
           {category.description}
         </p>
       )}
@@ -359,7 +375,7 @@ export function CategoryPage({
     <>
       {repeatedSub && (
         <div className="mb-4">
-          <SubHeaderBlock sub={repeatedSub} font={font} categoryColor={categoryColor}
+          <SubHeaderBlock sub={repeatedSub} font={categoryFont} categoryColor={categoryColor}
             hasBgImage={hasBgImage} accentColor={accentColor}
             subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
             dishNameColor={dishNameColor}
@@ -372,7 +388,7 @@ export function CategoryPage({
         if (unit.type === 'subheader') {
           return (
             <div key={`sub-${unit.sub._id}`} ref={setRef} className="pdf-unit mt-8">
-              <SubHeaderBlock sub={unit.sub} font={font} categoryColor={categoryColor}
+              <SubHeaderBlock sub={unit.sub} font={categoryFont} categoryColor={categoryColor}
                 hasBgImage={hasBgImage} accentColor={accentColor}
                 subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
                 dishNameColor={dishNameColor}
@@ -384,7 +400,7 @@ export function CategoryPage({
         if (!dish || typeof dish !== 'object') return null;
         return (
           <DishRow key={dish._id} dish={dish} isLast={idx === units.length - 1}
-            font={font} hasBgImage={hasBgImage} textColor={textColor}
+            font={dishFont} hasBgImage={hasBgImage} textColor={textColor}
             dishNameColor={dishNameColor} dishFontSize={dishFontSize} dishNameBold={dishNameBold}
             dishSpacing={dishSpacing} innerRef={setRef} />
         );
@@ -401,7 +417,7 @@ export function CategoryPage({
     if (unit.type === 'subheader') {
       return (
         <div key={box.key} style={boxStyle}>
-          <SubHeaderBlock sub={unit.sub} font={font} categoryColor={categoryColor}
+          <SubHeaderBlock sub={unit.sub} font={categoryFont} categoryColor={categoryColor}
             hasBgImage={hasBgImage} accentColor={accentColor}
             subcategoryFontSize={subcategoryFontSize} subcategoryTitleBold={subcategoryTitleBold}
             dishNameColor={dishNameColor}
@@ -414,7 +430,7 @@ export function CategoryPage({
     return (
       <div key={box.key} style={boxStyle}>
         <DishRow dish={dish} isLast
-          font={font} hasBgImage={hasBgImage} textColor={textColor}
+          font={dishFont} hasBgImage={hasBgImage} textColor={textColor}
           dishNameColor={dishNameColor} dishFontSize={dishFontSize} dishNameBold={dishNameBold}
           dishSpacing={dishSpacing} />
       </div>
@@ -461,7 +477,7 @@ export function CategoryPage({
         </div>
       )}
 
-      <FreeElementsLayer elements={freeElements} defaultFont={font} />
+      <FreeElementsLayer elements={freeElements} defaultFont={titleFont} />
     </div>
   );
 }

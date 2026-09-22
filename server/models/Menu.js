@@ -9,6 +9,10 @@ const menuSchema = new mongoose.Schema({
   },
   logo: { type: String, default: null }, // base64
   font: { type: String, default: 'Playfair Display' },
+  // Category/dish fonts fall back to `font` when unset — same override
+  // pattern as *FontColor below, but for the font family instead of color.
+  categoryFont: { type: String, default: null },
+  dishFont: { type: String, default: null },
   titleFontColor: { type: String, default: null },
   categoryFontColor: { type: String, default: null },
   dishFontColor: { type: String, default: null },
